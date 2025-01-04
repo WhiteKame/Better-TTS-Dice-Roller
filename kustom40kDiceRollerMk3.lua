@@ -50,10 +50,6 @@ resultsTable = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 seedCounter = 0
 
 thisBoxIsBlue = (self.guid == Global.getVar("blueDiceRoller_GUID")) and true or false
---增加seed扰动
--- local seed1 = os.time() + tonumber(tostring({}):sub(8), 16)
--- local seed2 = math.floor(os.clock() * 1000)
--- math.randomseed(generateSeed())
 
 orderedOnNextRoll = false
 groupSizeOnNextRoll = 1
@@ -64,22 +60,22 @@ if objectToPlaceDiceOn == nil then
     objectToPlaceDiceOn = self
 end
 
---增加seed扰动
+--add seed perturbation
 function generateSeed()
     local timeSeed = os.time()
     local clockSeed = math.floor(os.clock() * 1000000)
-    local addressSeed = tonumber(tostring({}):sub(8), 16) -- 获取表的内存地址
+    local addressSeed = tonumber(tostring({}):sub(8), 16) -- get the memory address of the table
     local randomSeed = timeSeed + clockSeed + addressSeed
-    return randomSeed % 2^31 -- 确保种子在合理范围内
+    return randomSeed % 2^31 -- make sure the seed is within a reasonable range
 end
 math.randomseed(generateSeed())
 
 
--- 梅森旋转伪随机数生成器的简化版实现
-local mt = {}  -- 梅森旋转算法的状态数组
-local index = 0  -- 当前状态索引
+-- simplified implementation of the Mersenne Twister pseudo-random number generator
+local mt = {}  -- mersenne Twister algorithm state array
+local index = 0  -- current Status Index
 
--- 初始化梅森旋转生成器
+-- initialize the Mersenne Twister generator
 function initMersenneTwister(seed)
     index = 0
     mt[0] = seed
@@ -88,7 +84,7 @@ function initMersenneTwister(seed)
     end
 end
 
--- 获取下一个随机数
+-- get the next random number
 function nextMersenneTwister()
     local y = mt[index]
     y = bit32.bxor(y, bit32.rshift(y, 11))
@@ -99,13 +95,13 @@ function nextMersenneTwister()
     return y
 end
 
--- 生成随机数并映射到[min, max]区间
+-- generate random numbers and map them to the [min, max] interval
 function mersenneRandom(min, max)
     local result = nextMersenneTwister()
     return math.floor(result % (max - min + 1)) + min
 end
 
--- 初始化并使用
+-- initialize
 initMersenneTwister(os.time())
 
 -- used to nil out a passed parameter
@@ -245,20 +241,17 @@ function takeDiceOut(tab)
         printToAll('Warning - "step" can\'t be lower than 1. Restored default configuration.', {0.8, 0.5, 0})
     end
 
-    -- 清理旧数据
     clearDataForGC(diceGuids)
     diceGuids = {}
 
-    -- 获取袋子中的骰子信息
     for _, obj in pairs(self.getObjects()) do
         local faces = diceGuidFaces[obj.guid] or 6
         if obj.name == "BCB-D3" then
             faces = 3
         end
-        diceGuids[obj.guid] =mersenneRandom(1, 6)  -- 输出 1 到 6 之间的随机数 -- 随机投掷结果
+        diceGuids[obj.guid] =mersenneRandom(1, 6)  -- output a random number between 1 and 6
     end
 
-    -- 根据配置设置
     local ordered = orderedOnNextRoll
     orderedOnNextRoll = false
     local groupSize = groupSizeOnNextRoll
@@ -272,13 +265,11 @@ function takeDiceOut(tab)
     local sortType = data.SortNoRows
     if ordered then sortType = "none" end
 
-    -- 对骰子进行排序
     local sortedKeys = sortByVal(diceGuids, sortType)
     clearDataForGC(Rows)
     Rows = {}
     local n = 1
 
-    -- 处理每个骰子
     for _, key in pairs(sortedKeys) do
         if diceGuids[key] == math.floor(diceGuids[key]) then
             resultsTable[diceGuids[key]] = (resultsTable[diceGuids[key]] or 0) + 1
@@ -288,12 +279,10 @@ function takeDiceOut(tab)
             Rows[diceGuids[key]] = (Rows[diceGuids[key]] or 0) + 1
             local newXPos, newZPos
             if displayInRows then
-                -- 按行显示
                 local d12Xoffset = diceGuids[key] > 6 and -24 or 0
                 newXPos = 0 - d12Xoffset - 20.4 + (Rows[diceGuids[key]] * data.Step)
                 newZPos = -3.17 + ((((diceGuids[key] - 1) % 6) + 1) * data.Step)
             else
-                -- 分组显示
                 local pos = n - 1
                 local limit = 25
                 if groupSize > 1 then
@@ -309,14 +298,12 @@ function takeDiceOut(tab)
                 newZPos = -3.17 + (row * data.Step)
             end
 
-            -- 计算实际位置
             local finalPosition = {
                 position.x + (newXPos * math.cos((180 + rotation.y) * 0.0174532)) - (newZPos * math.sin((180 + rotation.y) * 0.0174532)),
                 position.y + 2,
                 position.z + (newXPos * math.sin(rotation.y * 0.0174532)) + (newZPos * math.cos(rotation.y * 0.0174532))
             }
 
-            -- 放置骰子
             self.takeObject({
                 guid = key,
                 position = finalPosition,
@@ -330,80 +317,8 @@ function takeDiceOut(tab)
         end
     end
 
-    -- 打印结果表
     printresultsTable()
 end
-
-function randomizeDiceCallback(die, params)
-    -- 检查骰子对象是否有效
-    if not die then 
-        print("Error: Dice object is nil.")
-        return 
-    end
-
-    -- 随机移动骰子位置
-    local offsetX = math.random(-2, 2)
-    local offsetZ = math.random(-2, 2)
-    local position = die.getPosition()
-    position.x = position.x + offsetX
-    position.z = position.z + offsetZ
-    position.y = position.y + 2 -- 抬高，避免卡住
-    die.setPosition(position)
-
-    -- 随机设置旋转
-    die.setRotation({
-        math.random(0, 360),
-        math.random(0, 360),
-        math.random(0, 360)
-    })
-
-    -- 随机施加力
-    local force = {
-        x = math.random(-50, 50),
-        y = math.random(50, 100),
-        z = math.random(-50, 50)
-    }
-    die.addForce(force)
-
-    -- 调用内置的随机化函数
-    die.randomize()
-
-    -- 可选：输出骰子状态或结果
-    print("Die " .. die.getGUID() .. " with " .. params.faces .. " faces randomized.")
-end
-
-function rollDiceWithRandomize(diceGuids)
-    -- 遍历所有骰子 GUID
-    for guid, faces in pairs(diceGuids) do
-        local die = getObjectFromGUID(guid)
-        if die then
-            randomizeDiceCallback(die, {faces = faces})
-        else
-            print("Error: Failed to find dice with GUID " .. guid)
-        end
-    end
-
-    -- 等待物理模拟完成后重置位置和读取结果
-    Wait.time(function()
-        for guid, faces in pairs(diceGuids) do
-            local die = getObjectFromGUID(guid)
-            if die then
-                -- 锁定位置
-                die.setLock(true)
-
-                -- 获取随机值
-                local result = die.getValue()
-                if result then
-                    diceGuids[guid] = result
-                    print("Die " .. guid .. " rolled: " .. result)
-                else
-                    print("Error: Failed to retrieve value for die " .. guid)
-                end
-            end
-        end
-    end, 2) -- 2秒后运行，等待物理模拟完成
-end
-
 
 --Function to count resultsTable for printing.
 function sum(t)
