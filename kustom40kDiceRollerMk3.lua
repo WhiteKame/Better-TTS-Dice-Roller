@@ -61,14 +61,14 @@ if objectToPlaceDiceOn == nil then
 end
 
 --add seed perturbation
-function generateSeed()
-    local timeSeed = os.time()
-    local clockSeed = math.floor(os.clock() * 1000000)
-    local addressSeed = tonumber(tostring({}):sub(8), 16) -- get the memory address of the table
-    local randomSeed = timeSeed + clockSeed + addressSeed
-    return randomSeed % 2^31 -- make sure the seed is within a reasonable range
-end
-math.randomseed(generateSeed())
+-- function generateSeed()
+--     local timeSeed = os.time()
+--     local clockSeed = math.floor(os.clock() * 1000000)
+--     local addressSeed = tonumber(tostring({}):sub(8), 16) -- get the memory address of the table
+--     local randomSeed = timeSeed + clockSeed + addressSeed
+--     return randomSeed % 2^31 -- make sure the seed is within a reasonable range
+-- end
+-- math.randomseed(generateSeed())
 
 
 -- simplified implementation of the Mersenne Twister pseudo-random number generator
